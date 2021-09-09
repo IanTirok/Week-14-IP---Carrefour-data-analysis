@@ -1,0 +1,578 @@
+---
+title: "Week 14 IP Part 1 - Carrefour Kenya"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+install.packages("weatherData",repos = "http://cran.us.r-project.org")
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+
+# update all available packages
+update.packages()
+
+```
+
+```{r}
+install.packages("data.table")
+install.packages("tidyverse")
+install.packages("lubridate") 
+install.packages('cutr')
+install.packages('modeest')
+install.packages('moments')
+install.packages('janitor')
+install.packages('ggcorrplot')
+install.packages('caret')
+install.packages('arules')
+install.packages("anomalize")
+install.packages('tibbletime')
+install.packages('timetk')
+install.packages("arulesViz")
+install.packages("dplyr")
+install.packages("tibble")
+install.packages("tibbletime")
+install.packages('dummies')
+install.packages('devtools')
+install.packages("grid")
+install.packages("reshape2")
+install.packages("plyr")
+install.packages("scales")
+install.packages("ggplot2")
+
+install.packages("corrplot")
+
+```
+
+```{r}
+install.packages("openxlsx")
+library(openxlsx)
+library(reshape2)
+
+library(plyr)
+
+library(scales)
+
+library(ggplot2)
+
+library(devtools)
+
+library(grid)
+
+library(corrplot)
+```
+
+
+```{r}
+library("data.table")
+library("tidyverse")
+library('lubridate')
+library("modeest")
+library("moments")
+library("janitor")
+library(ggcorrplot)
+library('caret')
+library('arules')
+library('anomalize')
+library('tibbletime')
+library('timetk')
+library('arulesViz')
+require('dplyr')
+library('dummies')
+library('devtools')
+library(dplyr)
+
+
+
+
+####################################### Works
+
+
+
+```
+
+##2. Reading and checking of data
+```{r}
+#Load the readr library to bring in the dataset
+library(readr)
+
+#Reading and checking the sales data
+Sales <- read.csv('http://bit.ly/CarreFourDataset')
+head(Sales)
+
+```
+
+```{r}
+#Checking the dimensions of the table
+
+dim(Sales)
+```
+
+```{r}
+#Displaying the type and a preview of all columns
+#
+
+glimpse(Sales)
+```
+
+```{r}
+#Checking on summary statistics of numeric variables
+
+summary(Sales)
+```
+##3. Data Cleaning 
+```{r}
+## To ensure uniformity, I will lowercase all the columns
+names(Sales)<- tolower(names(Sales))
+head(Sales) 
+```
+Next I'm going to checking for missing values in our dataset,,Missing values may affect the perfomance of our model, so we will find a way to deal with them
+
+```{r}
+#Checking for missing values in the columns of our dataset
+#
+
+colSums(is.na(Sales))
+
+```
+There is no missing data in any column
+Lets now check for duplicates in our dataset
+```{r}
+anyDuplicated(Sales)
+```
+We dont have duplicates in our dataset
+Lets now check for outliers in our dataset
+```{r}
+## obtaining numerical columns
+numeric_columns <- unlist(lapply(Sales, is.numeric))
+```
+```{r}
+## I will put the numerical columns in a dataframe
+columns_numeric <- Sales[ , numeric_columns]
+head(columns_numeric)
+
+```
+
+```{r}
+# using a for lop, I will output boxplots of numerical columns..This will help me to identify the outliers
+par ( mfrow= c (  2, 4 ))
+for (i in 1 : length (columns_numeric)) {
+boxplot (columns_numeric[,i], main= names (columns_numeric[i]), type= "l" , height = 200, width = 110)}
+```
+There are outliers in                
+ * tax,
+ * gross.income,       
+ * cogs,         
+ * Total. 
+ 
+ Removing outliers may cause innacurate results from our models. We can also expect outliers in tax and gross income due to the earning capacities of different individuals. This could be an accurate description of reality and therefore we will not be dropping any outliers.
+```{r}
+lengths(lapply(Sales, unique))
+```
+```{r}
+dim(Sales)
+```
+ Given the dimensions of 1000 rows, the data seems clean with 1000 unique identfiers i.e: invoice.id
+ We can also gather that
+ * 1. 3 outlets are represented in this dataset
+ * 2. 2 customer types are presented in this dataset
+ * 3. 2 genders are represented
+ * 4. 6 product groups are included
+ * 5. 943 different product prices are included
+ * 6. 10 Quantities are indicated
+ * 7. 990 different taxes are included
+ * 8. Spread over 89 dates and 506 different times
+ * 9. 3 different payment options
+ * 10. 990 cogs
+ * 11. 1 gross margin percentage
+ * 12. 990 gross incomes
+ * 13. 61 different ratings
+ * 14.  990 different totals
+ 
+##Univariate analysis
+###Numerical columns
+Univariate analysis will help us gain insights on the general characteristics of the individual variables in the dataset.
+
+```{r}
+# compute the measures of cenral tendancy and the measures of dispersion of the numerical variables and contain them in a data1frame
+stats <- data.frame(
+  Mean = apply(columns_numeric, 2, mean), 
+  Median = apply(columns_numeric, 2, median), 
+  Min = apply(columns_numeric, 2, min),  
+  Max = apply(columns_numeric, 2, max),    
+  Variance= apply(columns_numeric, 2, var),  
+  Std = apply(columns_numeric, 2, sd),
+  Skewness = apply(columns_numeric, 2, skewness), 
+  Kurtosis = apply(columns_numeric, 2, kurtosis)) 
+
+# round off the values to 2 decimal places and display the data1frame
+stats <- round(stats, 2)
+stats
+```
+```{r}
+
+# plot a histogram to visualize the distribution of values in 'unit_price' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = unit.price ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 10) +
+    labs(title = "Distribution of Unit Price", x = "unit price", y = "Frequency") +
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+
+```
+```{r}
+
+# plot a histogram to visualize the distribution of values in 'quantity' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = quantity ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 1) +
+    labs(title = "Distribution of Quantity", x = "quantity", y = "Frequency") +
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+
+```
+
+```{r}
+
+# plot a histogram to visualize the distribution of values in 'cogs' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = cogs ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 100) +
+    labs(title = "Distribution of Cogs", x = "cogs", y = "Frequency") +
+      theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+```
+
+```{r}
+# plot a histogram to visualize the distribution of values in 'gross_income' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = gross.income ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 5) +
+    labs(title = "Distribution of Gross Income", x = "gross income", y = "Frequency") +
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+```
+```{r}
+# plot a histogram to visualize the distribution of values in 'rating' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = rating ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 2) +
+    labs(title = "Distribution of Rating", x = "rating", y = "Frequency") +
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+```
+```{r}
+
+# plot a histogram to visualize the distribution of values in 'total' column
+
+options(repr.plot.width = 8, repr.plot.height = 6)
+p = Sales %>% ggplot(aes(x = total ))
+
+p + geom_histogram(color="lightgray", fill="plum", binwidth = 100) +
+    labs(title = "Distribution of Total", x = "total", y = "Frequency") +
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+```
+
+###Categorical columns
+
+```{r}
+# plot a pie chart to visualize the proportion of values in the 'branch' column
+data.branch = Sales %>% 
+  filter(branch != "NA") %>% 
+  group_by(branch) %>% 
+  count() %>% 
+  ungroup()%>% 
+  arrange(desc(branch)) %>%
+  mutate(percentage = round(n/sum(n),4)*100,
+         lab.pos = cumsum(percentage)-.5*percentage)
+ggplot(data = data.branch, 
+       aes(x = "", y = percentage, fill = branch))+
+  geom_bar(stat = "identity")+
+  coord_polar("y", start = 0) +
+  geom_text(aes(y = lab.pos, label = paste(percentage,"%", sep = "")), col = "black") +
+  theme_void() + scale_fill_brewer(palette = "Pastel2") + labs(title= 'Pie Chart for Branch') + 
+  theme(plot.title = element_text(hjust = 0.5, size = 24))
+```
+```{r}
+# plot a pie chart to visualize the proportion of values in the 'customer_type' column
+data.customer.type = Sales %>% 
+  filter(customer.type != "NA") %>% 
+  group_by(customer.type) %>% 
+  count() %>% 
+  ungroup()%>% 
+  arrange(desc(customer.type)) %>%
+  mutate(percentage = round(n/sum(n),4)*100,
+         lab.pos = cumsum(percentage)-.5*percentage)
+ggplot(data = data.customer.type, 
+       aes(x = "", y = percentage, fill = customer.type))+
+  geom_bar(stat = "identity")+
+  coord_polar("y", start = 0) +
+  geom_text(aes(y = lab.pos, label = paste(percentage,"%", sep = "")), col = "black") +
+  theme_void() + scale_fill_brewer(palette = "Pastel2") + labs(title= 'Pie Chart for Customer Type') + 
+  theme(plot.title = element_text(hjust = 0.5, size = 24))
+```
+```{r}
+# plot a pie chart to visualize the proportion of values in the 'gender' column
+data.gender = Sales %>% 
+  filter(gender != "NA") %>% 
+  group_by(gender) %>% 
+  count() %>% 
+  ungroup()%>% 
+  arrange(desc(gender)) %>%
+  mutate(percentage = round(n/sum(n),4)*100,
+         lab.pos = cumsum(percentage)-.5*percentage)
+ggplot(data = data.gender, 
+       aes(x = "", y = percentage, fill = gender))+
+  geom_bar(stat = "identity")+
+  coord_polar("y", start = 0) +
+  geom_text(aes(y = lab.pos, label = paste(percentage,"%", sep = "")), col = "black") +
+  theme_void() + scale_fill_brewer(palette = "Pastel2") + labs(title= 'Pie Chart for Gender') + 
+  theme(plot.title = element_text(hjust = 0.5, size = 24))
+    theme(axis.title = element_text(size = 20),
+          axis.text = element_text(size=16),
+          plot.title = element_text(hjust = 0.5, size = 20))
+```
+
+```{r}
+# plot a pie chart to visualize the proportion of values in the 'payment' column
+data.payment = Sales %>% 
+  filter(payment != "NA") %>% 
+  group_by(payment) %>% 
+  count() %>% 
+  ungroup()%>% 
+  arrange(desc(payment)) %>%
+  mutate(percentage = round(n/sum(n),4)*100,
+         lab.pos = cumsum(percentage)-.5*percentage)
+ggplot(data = data.payment, 
+       aes(x = "", y = percentage, fill = payment))+
+  geom_bar(stat = "identity")+
+  coord_polar("y", start = 0) +
+  geom_text(aes(y = lab.pos, label = paste(percentage,"%", sep = "")), col = "black") +
+  theme_void() + scale_fill_brewer(palette = "Pastel2") + labs(title= 'Pie Chart for Payment') + 
+  theme(plot.title = element_text(hjust = 0.5, size = 24))
+```
+```{r}
+
+# plot a bar chart to visualize the proportion of values in 'product_line' column
+ggplot(Sales, aes(product.line)) + 
+        geom_bar(aes(y = (..count..)/sum(..count..)), fill = "paleturquoise") + 
+        scale_y_continuous(labels=scales::percent) +
+        labs(title= 'Proportions of Product Lines', x='Productline', y="Proportion") + 
+        theme(axis.title = element_text(size = 18),
+              axis.text = element_text(size=16),
+              plot.title = element_text(hjust = 0.5, size = 24), axis.text.x = element_text(angle = 90))
+# create a frequency table to get the actual figures of frequencies of parts of month using tabyl function
+tabyl(Sales$product.line, sort = TRUE)
+```
+##Bivariate Analysis
+
+```{r}
+library(ggcorrplot)
+# plotting a correlation matrix
+
+ggcorrplot(cor(columns_numeric))
+```
+ from the correlation matrix we notice some highly positive correlated variables Tax, cogs and gross.income and as well as Total 
+```{r}
+# plot pair plots to view the distribution of the values per pair of variables
+options(repr.plot.height = 90, repr.plot.width = 90)
+pairs(columns_numeric)
+```
+
+##Implementing the solution
+## PCA
+
+Principal component analysis is a widely used and popular statistical method for reducing data with many dimensions (variables) by projecting the data with fewer dimensions using linear combinations of the variables, known as principal components. 
+```{r}
+# sort the table in ascending order of 'date'
+data  = Sales[order(Sales$date),]    
+
+# convert dataset to tibble
+data_tb <- as_tibble(data)
+head(data_tb)
+```
+```{r}
+head(columns_numeric)
+df<- columns_numeric[,c(1,2,3,4,6,7,8)]
+head(df)
+
+```
+
+```{r}
+# We then pass df to the prcomp(). We also set two arguments, center and scale, 
+# to be TRUE then preview our object with summary
+# ---
+# 
+Sales.pca <- prcomp(df, center = TRUE, scale. = TRUE)
+summary(Sales.pca)
+# As a result we obtain 7 principal components, 
+# each which explain a percentate of the total variation of the dataset
+# PC1 explains 70% of the total variance, which means that nearly two-thirds 
+# of the information in the dataset (7 variables) can be encapsulated 
+# by just that one Principal Component. PC2 explains 23% of the variance. etc
+```
+
+```{r}
+# Calling str() to have a look at your PCA object
+# ---
+# 
+str(Sales.pca)
+# Here we note that our pca object: The center point ($center), scaling ($scale), 
+# standard deviation(sdev) of each principal component. 
+# The relationship (correlation or anticorrelation, etc) 
+# between the initial variables and the principal components ($rotation). 
+# The values of each sample in terms of the principal components ($x)
+```
+
+```{r}
+library(biplotbootGUI)
+library(BiplotGUI)
+library(BiplotML)
+```
+```{r}
+#BiplotbootGUI(Sales.pca)
+#BiplotGUI(Sales.pca)
+plot(Sales.pca)
+```
+```{r}
+
+# Then Loading our biplot library
+
+biplot(Sales.pca)
+```
+
+```{r}
+## Using Wrapper Methods
+# importing some libraries
+install.packages("clustvarsel")
+library(clustvarsel)
+install.packages("mclust")
+library(mclust)
+```
+
+```{r}
+# Sequential forward greedy search (default)
+clustvarsel(columns_numeric)
+```
+
+
+
+
+## Conclusions
+1. PCA1 to PCA4 are able to explain the variance in the data as they represent 99.96 of the variance. The other PC5 to 7 should be dropped.
+2. The columns quantity, gross income,unit price and rating are able to explain the variance in the data,, so there are the most important features to be used in modelling
+3. from the wrapper methods suggests Quantity, cogs, Unit.price as  the optimal subset of variables for further analysis
+
+## Follow Up Questions
+1. DId we have the right data
+- We had the right data as we were able to perform PCA successfully
+- MAybe to challenge our solution, maybe we could try using the T_SNE algorithm
+- Also dealing with outliers in the future would also increase the importance of our features
+
+
+#Part 2
+
+##Feature Selection
+This section requires you to perform feature selection through the use of the unsupervised learning methods and perform your analysis and provide insights on the features that contribute the most information to the dataset.
+```{r}
+library(caret)
+```
+```{r}
+
+#Convert the data to factors and integers 
+Sales$branch <- (as.integer(as.factor(Sales$branch)))
+Sales$customer.type <- (as.integer(as.factor(Sales$customer.type)))
+Sales$gender <- (as.integer(as.factor(Sales$gender)))
+Sales$product.line <- (as.integer(as.factor(Sales$product.line)))
+Sales$payment <- (as.integer(as.factor(Sales$payment)))
+#Previewing the dataset
+
+head(Sales)
+```
+
+```{r}
+## obtaining numerical columns
+numeric_columns <- unlist(lapply(Sales, is.numeric))
+columns_numeric <- Sales[ , numeric_columns]
+head(columns_numeric)
+```
+```{r}
+# Calculating the correlation matrix
+# ---
+#
+correlationMatrix <- cor(columns_numeric)
+
+# Find attributes that are highly correlated
+# ---
+#
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+
+# Highly correlated attributes
+# ---
+# 
+highlyCorrelated
+
+names(columns_numeric[,highlyCorrelated])
+```
+
+```{r}
+head(sales2)
+```
+
+
+
+```{r}
+# We can remove the variables with a higher correlation 
+# and comparing the results graphically as shown below
+# ---
+# 
+# Removing Redundant Features 
+# ---
+# 
+sales2 <- subset(Sales, select = -c(cogs,  total, tax))
+
+
+# Performing our graphical comparison
+# ---
+# 
+library(corrplot)
+par(mfrow = c(1, 2))
+corrplot(correlationMatrix, order = "hclust")
+corrplot(cor(sales2), order = "hclust")
+```
+```{r}
+# Performing our graphical comparison
+
+par(mfrow = c(1, 2))
+corrplot(correlationMatrix, order = "hclust")
+corrplot(cor(df1), order = "hclust")
+```
+

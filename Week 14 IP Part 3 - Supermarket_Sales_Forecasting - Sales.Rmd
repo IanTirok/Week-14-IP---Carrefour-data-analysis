@@ -1,0 +1,120 @@
+---
+title: "Week 14 IP Part 3 - Supermarket_Sales_Forecasting - Sales"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+install.packages("pacman")
+# Loading the necessary libraries and automatically installing them if not present
+pacman :: p_load(rio,tidyverse, Amelia ,anomalize)
+```
+```{r}
+#Load the readr library to bring in the dataset
+library(readr)
+```
+
+```{r}
+
+
+#Reading and checking the sales data
+data <- read.csv('http://bit.ly/CarreFourSalesDataset')
+head(data)
+tail(data)
+
+```
+
+
+
+```{r}
+# Checking the size and shape of data
+dim(data)
+```
+We have 1000 rows and 2 columns
+```{r}
+# Viewing data types using str().
+str(data)
+```
+
+```{r}
+#Checking on summary statistics of numeric variables
+
+summary(data)
+```
+##3. Data Cleaning 
+```{r}
+## To ensure uniformity, I will lowercase all the columns
+names(data)<- tolower(names(data))
+head(data) 
+```
+```{r}
+
+#changing date to date time. 
+data$date <- as.Date(data$date, "%m/%d/%y")
+head(data)
+```
+
+
+
+Next I'm going to checking for missing values in our dataset,,Missing values may affect the perfomance of our model, so we will find a way to deal with them
+
+```{r}
+#Checking for missing values in the columns of our dataset
+#
+
+colSums(is.na(data))
+
+```
+There is no missing data in any column
+Lets now check for duplicates in our dataset
+```{r}
+anyDuplicated(data)
+```
+We dont have duplicates in our dataset
+Lets now check for outliers in our dataset
+```{r}
+ggplot(data) +
+  aes(x = "", y = sales) +
+  geom_boxplot(fill = "#0c4c8a") +
+  theme_minimal()
+
+```
+There are afew outliers where sales exceed 950
+We will not drop them.
+### Detecting our anomalies
+
+
+
+### checking  the number of transaction in a day
+
+```{r}
+# group and tally the number of transactions per day
+df <- data %>% group_by(date) %>% tally()
+colnames(df) <- c('transactionDate', 'totalCount')
+head(df)
+```
+the above shows the number of the customer transactions frm Jan 1st to Jan 6th. 
+```{r}
+# we now plot using plot_anomaly_decomposition() to visualize out data.
+df %>%
+    time_decompose(totalCount) %>%
+    anomalize(remainder) %>%
+    plot_anomaly_decomposition(ncol = 1, alpha_dots = 0.5) +
+    ggtitle("Anomaly Detection Plot")
+```
+observation: there is no red flag thus these customer transactions do not have anomalies.
+
+```{r}
+# ploting the recomposition to try and see anomalies
+#
+df %>%
+    time_decompose(totalCount) %>%
+    anomalize(remainder) %>%
+    time_recompose() %>%
+    plot_anomalies(time_recomposed = TRUE, ncol = 1, alpha_dots = 0.25, fill="pink") +
+    ggtitle("Anomalie detection plots")
+```
+
+observation: we can conclude that there is no anomaly(outliers) in this dataset.
+

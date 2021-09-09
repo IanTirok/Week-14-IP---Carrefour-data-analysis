@@ -1,0 +1,106 @@
+---
+title: "Week 14 IP Part 2 - Kenyan_Households_Roofing_Material"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+```{r}
+
+# We first we install the required arules library 
+#
+install.packages("arules")
+```
+```{r}
+install.packages("weatherData",repos = "http://cran.us.r-project.org")
+```
+
+```{r}
+
+# Loading the arules library
+#
+library(arules)
+```
+
+```{r}
+
+# update all available packages
+update.packages()
+
+```
+```{r}
+
+# Loading our transactions dataset from our csv file
+path <-"http://bit.ly/SupermarketDatasetII"
+
+house<-read.transactions(path, sep = ",")
+house
+head(house)
+tail(house)
+
+
+```
+```{r}
+#Checking the dimensions of the table
+
+dim(house)
+```
+
+
+```{r}
+# Verifying the object's class
+class(house)
+```
+```{r}
+# Previewing our first 5 transactions
+inspect(house[1:5])
+```
+```{r}
+#Preview the items that make up our dataset,
+items<-as.data.frame(itemLabels(house))
+colnames(items) <- "Item"
+head(items, 10)
+```
+
+```{r}
+#Checking on summary statistics of numeric variables
+
+summary(house)
+```
+```{r}
+# Exploring the frequency of some articles 
+# i.e. transacations ranging from 6 to 10 and performing 
+# some operation in percentage terms of the total transactions 
+# 
+itemFrequency(house[, 2:10],type = "absolute")
+round(itemFrequency(house[, 4:10],type = "relative")*100,2)
+```
+
+```{r}
+## Create an item frequency plot for the top 25 items
+# coerce data frame into transaction. Plotting the dataframe directly fails
+houses <- as(house, "transactions")
+# plot item frequency
+itemFrequencyPlot(houses,topN=25,type="absolute")
+```
+Mineral water, spaghetti, eggs, chocolate, frenh fries, green tea and milk are the top bought items in terms of frequency being over 800. soup, grated cheese and herb and pepper are the lowest
+```{r}
+rules <- apriori (house, parameter = list(supp = 0.001, conf = 0.8))
+```
+```{r}
+# Building apriori models altering support and confidence values
+rule_2 <- apriori (house,parameter = list(supp = 0.002, conf = 0.8)) 
+rule_3 <- apriori (house, parameter = list(supp = 0.001, conf = 0.6)) 
+rule_2
+rule_3
+```
+```{r}
+summary(rules)
+```
+```{r}
+inspect(rules[1:15])
+```
+```{r}
+rules<-sort(rules, by="confidence", decreasing=TRUE)
+inspect(rules[1:20])
+```
+If someone buys cake,meatballs  and mineral water they are 100% likely to buy milk
